@@ -4,6 +4,7 @@ import "sync"
 
 var Handlers = map[string]func([]Value) Value{
 	"PING":    ping,
+	"ECHO":    echo,
 	"SET":     set,
 	"GET":     get,
 	"HSET":    hSet,
@@ -13,6 +14,11 @@ var Handlers = map[string]func([]Value) Value{
 
 func ping(args []Value) Value {
 	return Value{typ: STRING, str: "PONG"}
+}
+
+func echo(args []Value) Value {
+	value := args[0].bulk
+	return Value{typ: STRING, str: value}
 }
 
 var SETs = map[string]string{}
