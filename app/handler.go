@@ -1,6 +1,12 @@
 package main
 
-import "sync"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
 
 var Handlers = map[string]func([]Value) Value{
 	"PING":    ping,
@@ -12,6 +18,12 @@ var Handlers = map[string]func([]Value) Value{
 	"HGETALL": hGetAll,
 }
 
+type Entry struct {
+	Value       any
+	TimeCreated time.Time
+	ExpiresAt   time.Time
+}
+
 func ping(args []Value) Value {
 	return Value{typ: STRING, str: "PONG"}
 }
@@ -21,20 +33,38 @@ func echo(args []Value) Value {
 	return Value{typ: STRING, str: value}
 }
 
-var SETs = map[string]string{}
+var SETs = map[string]*Entry{}
 
 // SETsMu 获取 SETs 的读写互斥锁
 var SETsMu = sync.RWMutex{}
 
 func set(args []Value) Value {
-	if len(args) != 2 {
+	if len(args) != 2 && len(args) != 4 {
 		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'set' command"}
 	}
 	key := args[0].bulk
 	value := args[1].bulk
+	now, expires := time.Now(), time.Time{}
 
+	if len(args) == 4 {
+		cmd := args[2].bulk
+		var duration int64
+		duration, _ = strconv.ParseInt(args[3].bulk, 10, 64)
+		switch strings.ToLower(cmd) {
+		case "ex":
+			expires = now.Add(time.Duration(duration) * time.Second)
+		case "px":
+			expires = now.Add(time.Duration(duration) * time.Millisecond)
+		default:
+			return Value{typ: ERROR, str: "ERR unknown unit " + cmd + ", should be EX or PX"}
+		}
+	}
 	SETsMu.Lock()
-	SETs[key] = value
+	SETs[key] = &Entry{
+		Value:       value,
+		TimeCreated: now,
+		ExpiresAt:   expires,
+	}
 	defer SETsMu.Unlock()
 
 	return Value{typ: STRING, str: "OK"}
@@ -46,13 +76,22 @@ func get(args []Value) Value {
 	}
 	key := args[0].bulk
 	SETsMu.RLock()
-	value, ok := SETs[key]
+	entry, ok := SETs[key]
 	defer SETsMu.RUnlock()
 
-	if !ok {
+	if !ok || (entry.ExpiresAt.Before(time.Now()) && entry.ExpiresAt != time.Time{}) {
 		return Value{typ: NULL}
 	}
+	var value, _ = anyToString(entry.Value)
 	return Value{typ: STRING, str: value}
+}
+
+func anyToString(value any) (string, error) {
+	// 使用类型断言检查是否为 string
+	if str, ok := value.(string); ok {
+		return str, nil
+	}
+	return "", fmt.Errorf("value is not a string: %v", value)
 }
 
 var HSETs = map[string]map[string]string{}
