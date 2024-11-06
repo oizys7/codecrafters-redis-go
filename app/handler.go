@@ -9,6 +9,7 @@ import (
 )
 
 var Handlers = map[string]func([]Value) Value{
+	"CONFIG":  configGet,
 	"PING":    ping,
 	"ECHO":    echo,
 	"SET":     set,
@@ -72,7 +73,7 @@ func set(args []Value) Value {
 
 func get(args []Value) Value {
 	if len(args) != 1 {
-		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'set' command"}
+		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'get' command"}
 	}
 	key := args[0].bulk
 	SETsMu.RLock()

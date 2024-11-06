@@ -9,20 +9,21 @@ import (
 )
 
 func main() {
-	var port = "6379"
-	l, err := net.Listen("tcp", ":"+port)
-	fmt.Println("Listening on port: " + port)
+	initConfigs()
+
+	l, err := net.Listen("tcp", "0.0.0.0:"+*port)
+	fmt.Println("Listening on port: " + *port)
 	// TCP 连接异常处理
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
 	}
 
 	for {
 		conn, err := l.Accept()
 		// 端口监听异常处理
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error accepting connection: " + err.Error())
 			os.Exit(1)
 		}
 
@@ -32,7 +33,7 @@ func main() {
 		defer func(conn net.Conn) {
 			err := conn.Close()
 			if err != nil {
-				fmt.Println("error: ", err.Error())
+				fmt.Println("Error close connection: ", err.Error())
 				return
 			}
 		}(conn)
@@ -64,6 +65,7 @@ func handlerClientConnection(conn net.Conn) {
 		command := strings.ToUpper(value.array[0].bulk)
 		args := value.array[1:]
 
+		fmt.Println("从客户端接收到的数据：")
 		fmt.Println(value)
 		writer := NewWriter(conn)
 
@@ -86,16 +88,3 @@ func handlerClientConnection(conn net.Conn) {
 		}
 	}
 }
-
-//func handlerClientConnection1(conn net.Conn) {
-//	for {
-//		buf := make([]byte, 1024)
-//		_, err := conn.Read(buf)
-//		if err != nil {
-//			//fmt.Println("Error reading from connection: ", err.Error())
-//		}
-//		//log.Println("Received data: ", buf[:n])
-//		conn.Write([]byte("+PONG\r\n"))
-//		//log.Println("Received connection")
-//	}
-//}
