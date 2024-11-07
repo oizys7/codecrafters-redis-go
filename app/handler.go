@@ -17,15 +17,18 @@ var Handlers = map[string]func([]Value) Value{
 	"HSET":    hSet,
 	"HGET":    hGet,
 	"HGETALL": hGetAll,
+	"KEYS":    keys,
 }
 
 type Entry struct {
+	Type        string
 	Value       any
 	TimeCreated time.Time
-	ExpiresAt   time.Time
+	ExpiryInMS  time.Time
 }
 
 func ping(args []Value) Value {
+	_ = args
 	return Value{typ: STRING, str: "PONG"}
 }
 
@@ -33,6 +36,17 @@ func echo(args []Value) Value {
 	value := args[0].bulk
 	return Value{typ: STRING, str: value}
 }
+
+// todo-w 如何将 SETs 和 HSETs 放在一起？数据结构如何设计？
+// 将 SETs 设计为 key -> value，将 HSETs 设计为 hash:key -> value
+
+// STORAGE 存储所有类型的数据
+//type STORAGE struct {
+//	Data map[string]*Entry
+//	Mu   sync.RWMutex
+//}
+//
+//var storage = STORAGE{}
 
 var SETs = map[string]*Entry{}
 
@@ -60,11 +74,20 @@ func set(args []Value) Value {
 			return Value{typ: ERROR, str: "ERR unknown unit " + cmd + ", should be EX or PX"}
 		}
 	}
+
+	//storage.Mu.Lock()
+	//storage.Data[key] = &Entry{
+	//	Type:        "SET",
+	//	Value:       value,
+	//	TimeCreated: now,
+	//	ExpiryInMS:  expires,
+	//}
+	//defer storage.Mu.Unlock()
 	SETsMu.Lock()
 	SETs[key] = &Entry{
 		Value:       value,
 		TimeCreated: now,
-		ExpiresAt:   expires,
+		ExpiryInMS:  expires,
 	}
 	defer SETsMu.Unlock()
 
@@ -76,11 +99,15 @@ func get(args []Value) Value {
 		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'get' command"}
 	}
 	key := args[0].bulk
+	//storage.Mu.RLock()
+	//entry, ok := storage.Data[key]
+	//defer storage.Mu.RUnlock()
+
 	SETsMu.RLock()
 	entry, ok := SETs[key]
 	defer SETsMu.RUnlock()
 
-	if !ok || (entry.ExpiresAt.Before(time.Now()) && entry.ExpiresAt != time.Time{}) {
+	if !ok || (entry.ExpiryInMS.Before(time.Now()) && entry.ExpiryInMS != time.Time{}) {
 		return Value{typ: NULL}
 	}
 	var value, _ = anyToString(entry.Value)
@@ -95,23 +122,31 @@ func anyToString(value any) (string, error) {
 	return "", fmt.Errorf("value is not a string: %v", value)
 }
 
-var HSETs = map[string]map[string]string{}
+var HSETs = map[string]map[string]*Entry{}
 var HSETsMu = sync.RWMutex{}
 
 func hSet(args []Value) Value {
-	if len(args) != 3 {
+	if len(args) < 3 || len(args)%2 != 1 {
 		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'hset' command"}
 	}
 	hash := args[0].bulk
-	key := args[1].bulk
-	value := args[2].bulk
+	pair := (len(args) - 1) / 2
 
 	HSETsMu.Lock()
 	_, ok := HSETs[hash]
 	if !ok {
-		HSETs[hash] = map[string]string{}
+		HSETs[hash] = map[string]*Entry{}
 	}
-	HSETs[hash][key] = value
+	for i := 0; i < pair; i++ {
+		key := args[1+i*2].bulk
+		value := args[1+i*2+1].bulk
+		HSETs[hash][key] = &Entry{
+			Value:       value,
+			TimeCreated: time.Now(),
+			ExpiryInMS:  time.Time{},
+		}
+	}
+
 	defer HSETsMu.Unlock()
 
 	return Value{typ: STRING, str: "OK"}
@@ -125,14 +160,16 @@ func hGet(args []Value) Value {
 	key := args[1].bulk
 
 	HSETsMu.RLock()
-	value, ok := HSETs[hash][key]
+	entry, ok := HSETs[hash][key]
 	defer HSETsMu.RUnlock()
 
 	if !ok {
 		return Value{typ: NULL}
 	}
+	var value, _ = anyToString(entry.Value)
 	return Value{typ: BULK, bulk: value}
 }
+
 func hGetAll(args []Value) Value {
 	if len(args) != 1 {
 		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'hgetall' command"}
@@ -147,9 +184,30 @@ func hGetAll(args []Value) Value {
 	}
 
 	var values []Value
-	for k, v := range value {
+	for k, e := range value {
+		var v, _ = anyToString(e.Value)
 		values = append(values, Value{typ: BULK, bulk: k})
 		values = append(values, Value{typ: BULK, bulk: v})
 	}
 	return Value{typ: ARRAY, array: values}
+}
+
+// Returns all keys matching pattern.
+func keys(args []Value) Value {
+	if len(args) != 1 {
+		return Value{typ: ERROR, str: "ERR wrong number of arguments for 'keys' command"}
+	}
+	key := args[0].bulk
+
+	var data = ""
+	var value []Value
+	if key == "*" {
+		data += readFile(Configs["dir"] + "/" + Configs["dbfilename"])
+		value = append(value, Value{typ: BULK, bulk: data})
+	}
+	if data == "" {
+		return Value{typ: NULL}
+	}
+	// 先支持SETs
+	return Value{typ: ARRAY, array: value}
 }
