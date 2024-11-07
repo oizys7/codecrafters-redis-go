@@ -1,6 +1,10 @@
 package main
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"time"
+)
 
 /*
 * RDB 文件格式概述
@@ -10,11 +14,6 @@ import "os"
 * 	数据库部分
 * 	文件结束部分
  */
-
-const (
-	RDB_MAGIC_STRING = "REDIS0011"
-	RDNB_EOF         = "REDISEOF"
-)
 
 const (
 	opCodeModuleAux    byte = 247 /* Module auxiliary data. */
@@ -27,6 +26,29 @@ const (
 	opCodeSelectDB     byte = 254 /* DB number of the following keys. */
 	opCodeEOF          byte = 255
 )
+
+func loadRdbFileIntoKVMemoryStore() {
+	content, err := os.ReadFile(fmt.Sprintf("%s/%s", *dir, *dbFileName))
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	if len(content) == 0 {
+		return
+	}
+
+	line := parseTable(content)
+	key := line[4 : 4+line[3]]
+	value := line[5+line[3]:]
+
+	SETsMu.Lock()
+	SETs[string(key)] = &Entry{
+		Value:       string(value),
+		TimeCreated: time.Now(),
+		ExpiryInMS:  time.Time{},
+	}
+	defer SETsMu.Unlock()
+}
 
 func sliceIndex(data []byte, sep byte) int {
 	for i, b := range data {

@@ -199,15 +199,22 @@ func keys(args []Value) Value {
 	}
 	key := args[0].bulk
 
-	var data = ""
 	var value []Value
 	if key == "*" {
-		data += readFile(Configs["dir"] + "/" + Configs["dbfilename"])
-		value = append(value, Value{typ: BULK, bulk: data})
+		for setKey := range SETs {
+			value = append(value, Value{typ: BULK, bulk: setKey})
+		}
+	} else {
+		SETsMu.RLock()
+		entry, ok := SETs[key]
+		defer SETsMu.RUnlock()
+		if !ok {
+			return Value{typ: NULL}
+		}
+		valueString, _ := anyToString(entry.Value)
+		value = append(value, Value{typ: BULK, bulk: valueString})
 	}
-	if data == "" {
-		return Value{typ: NULL}
-	}
+
 	// 先支持SETs
 	return Value{typ: ARRAY, array: value}
 }
