@@ -19,7 +19,7 @@ type ServerConnection struct {
 }
 
 func (s *Server) Start() {
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+	l, err := net.Listen("tcp", "0.0.0.0:"+*port)
 	logger.Info("Listening on port: " + *port)
 
 	// TCP 连接异常处理

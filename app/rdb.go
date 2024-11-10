@@ -53,27 +53,32 @@ const (
 )
 
 func loadRdbFileIntoKVMemoryStore() {
-	//parseDB()
+	parseDB()
 
 	// todo-w 自己实现 rdb 文件的读取逻辑
-	dec := NewDecoder(openRDBFile())
-	data, err := dec.parseRDB()
-	if err != nil && err.Error() != "EOF" {
-		logger.Error(err.Error())
-		return
-	}
-
-	for i := 0; i < len(data); i += 2 {
-		key := data[i]
-		value := data[i+1]
-		SETsMu.Lock()
-		SETs[key] = &Entry{
-			Value:       value,
-			TimeCreated: time.Now(),
-			ExpiryInMS:  time.Time{},
-		}
-		SETsMu.Unlock()
-	}
+	//rdbFile := openRDBFile()
+	//dec := NewDecoder(rdbFile)
+	//data, err := dec.parseRDB()
+	//if err != nil && err.Error() != "EOF" {
+	//	logger.Error(err.Error())
+	//	return
+	//}
+	//
+	//for i := 0; i < len(data); i += 2 {
+	//	key := data[i]
+	//	value := data[i+1]
+	//	SETsMu.Lock()
+	//	SETs[key] = &Entry{
+	//		Value:       value,
+	//		TimeCreated: time.Now(),
+	//		ExpiryInMS:  time.Time{},
+	//	}
+	//	SETsMu.Unlock()
+	//}
+	//
+	//defer func() {
+	//	_ = rdbFile.Close()
+	//}()
 }
 
 func openRDBFile() *os.File {
@@ -95,9 +100,9 @@ func openRDBFile() *os.File {
 	if err != nil {
 		logger.Error("Can not found %s\n", filePath)
 	}
-	defer func() {
-		_ = rdbFile.Close()
-	}()
+	//defer func() {
+	//	_ = rdbFile.Close()
+	//}()
 	return rdbFile
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 var port = flag.String("port", "6379", "port to listen on")
-var dir = flag.String("dir", "", "Directory to store RDB file")
+var dir = flag.String("dir", ".", "Directory to store RDB file")
 var dbFileName = flag.String("dbfilename", "dump.rdb", "RDB file name")
 
 // var logLevelStr = flag.String("loglevel", "INFO", "log print level")
