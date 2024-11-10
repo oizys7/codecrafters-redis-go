@@ -77,7 +77,9 @@ func masterAndSlaveReplication() {
 		logger.Error("error: ", err.Error())
 	}
 	writer := NewWriter(master)
-	err = writer.Write(Value{typ: STRING, str: "PING"})
+	var arrays []Value
+	arrays = append(arrays, Value{typ: STRING, bulk: "PING"})
+	err = writer.Write(Value{typ: ARRAY, array: arrays})
 	if err != nil {
 		logger.Error("error:handshake with master:", err.Error())
 	}
