@@ -11,6 +11,7 @@ import (
 var port = flag.String("port", "6379", "port to listen on")
 var dir = flag.String("dir", ".", "Directory to store RDB file")
 var dbFileName = flag.String("dbfilename", "dump.rdb", "RDB file name")
+var replicaof = flag.String("replicaof", "master", "replicaof host:port")
 
 // var logLevelStr = flag.String("loglevel", "INFO", "log print level")
 var logLevel = flag.Int64("loglevel", 1, "log print level: 0 debug 1 info 2 warning 3 error 4 fatal 5 off")
@@ -19,16 +20,30 @@ var logger = logging.Logger{}
 var Configs = map[string]string{}
 var ConfigsMu = sync.RWMutex{}
 
+var InfoSet = map[string]map[string]string{}
+var InfoSetMu = sync.RWMutex{}
+
 func initConfigs() {
 	// 解析命令行参数
 	flag.Parse()
 
 	logger = *logging.New(int(*logLevel))
+	ConfigsMu.Lock()
 	Configs["loglevel"] = strconv.FormatInt(*logLevel, 10)
 
 	Configs["port"] = *port
 	Configs["dir"] = *dir
 	Configs["dbfilename"] = *dbFileName
+	ConfigsMu.Unlock()
+
+	InfoSetMu.Lock()
+	if *replicaof == "" {
+		InfoSet["REPLICATION"] = map[string]string{"role": "master"}
+	} else {
+		InfoSet["REPLICATION"] = map[string]string{"role": "slave"}
+	}
+
+	InfoSetMu.Unlock()
 }
 
 func configGet(args []Value) Value {
