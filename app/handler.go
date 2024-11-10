@@ -232,9 +232,9 @@ func info(args []Value) Value {
 
 func replicationStr() string {
 	var str string
-	str += "role: " + InfoSet["REPLICATION"]["role"] + "\n"
-	str += "master_replid: " + InfoSet["REPLICATION"]["masterReplId"] + "\n"
-	str += "master_repl_offset: " + InfoSet["REPLICATION"]["masterReplOffset"] + "\n"
+	str += "role:" + InfoSet["REPLICATION"]["role"] + "\n"
+	str += "master_replid:" + InfoSet["REPLICATION"]["masterReplId"] + "\n"
+	str += "master_repl_offset:" + InfoSet["REPLICATION"]["masterReplOffset"] + "\n"
 
 	return str
 }
