@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/codecrafters-io/redis-starter-go/logging"
@@ -77,14 +78,60 @@ func masterAndSlaveReplication() {
 		logger.Error("error: ", err.Error())
 	}
 
-	_, err = master.Write([]byte("*1\r\n$4\r\nPING\r\n"))
-	//writer := NewWriter(master)
-	//var arrays []Value
-	//arrays = append(arrays, Value{typ: STRING, bulk: "PING"})
-	//err = writer.Write(Value{typ: ARRAY, array: arrays})
+	//_, err = master.Write([]byte("*1\r\n$4\r\nPING\r\n"))
+	writer := NewWriter(master)
+	var arrays []Value
+	arrays = append(arrays, Value{typ: BULK, bulk: "PING"})
+	err = writer.Write(Value{typ: ARRAY, array: arrays})
 	if err != nil {
-		logger.Error("error:handshake with master:", err.Error())
+		logger.Error("error:handshake at 1 with master: %s", err.Error())
 	}
+	reader := bufio.NewReader(master)
+	response, err := reader.ReadString('\n')
+	logger.Debug("master response:%s", response)
+	if err != nil {
+		logger.Error("error:%s", err.Error())
+	}
+	//logger.Debug("master response:", string(response))
+	if strings.HasPrefix(response, "+PONG") {
+		arrays = []Value{}
+		arrays = append(arrays, Value{typ: BULK, bulk: "REPLCONF"})
+		arrays = append(arrays, Value{typ: BULK, bulk: "listening-port"})
+		arrays = append(arrays, Value{typ: BULK, bulk: *port})
+		err = writer.Write(Value{typ: ARRAY, array: arrays})
+		if err != nil {
+			logger.Error("error:handshake at 2 with master: %s", err.Error())
+		}
+		response, _ = reader.ReadString('\n')
+		logger.Debug("master response:%s", response)
+		time.Sleep(1 * time.Second)
+
+		arrays = []Value{}
+		arrays = append(arrays, Value{typ: BULK, bulk: "REPLCONF"})
+		arrays = append(arrays, Value{typ: BULK, bulk: "capa"})
+		arrays = append(arrays, Value{typ: BULK, bulk: "psync2"})
+		err = writer.Write(Value{typ: ARRAY, array: arrays})
+		if err != nil {
+			logger.Error("error:handshake at 3 with master:", err.Error())
+		}
+		response, _ = reader.ReadString('\n')
+		logger.Debug("master response:%s", response)
+		time.Sleep(1 * time.Second)
+		arrays = []Value{}
+		arrays = append(arrays, Value{typ: BULK, bulk: "PSYNC"})
+		arrays = append(arrays, Value{typ: BULK, bulk: "?"})
+		arrays = append(arrays, Value{typ: BULK, bulk: "-1"})
+		err = writer.Write(Value{typ: ARRAY, array: arrays})
+		if err != nil {
+			logger.Error("error:handshake at 3 with master:", err.Error())
+		}
+		response, _ = reader.ReadString('\n')
+		logger.Debug("master response:%s", response)
+		time.Sleep(1 * time.Second)
+	} else {
+		logger.Error("和主机的第一次握手失败")
+	}
+
 }
 
 func configGet(args []Value) Value {
