@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/codecrafters-io/redis-starter-go/logging"
+	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var port = flag.String("port", "6379", "port to listen on")
@@ -43,7 +45,24 @@ func initConfigs() {
 		InfoSet["REPLICATION"] = map[string]string{"role": "slave"}
 	}
 
+	// 初始化随机数生成器
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	// 生成 40 个字符的伪随机字母数字字符串
+	randomString := GenerateRandomString(40)
+	InfoSet["REPLICATION"]["masterReplId"] = randomString
+	InfoSet["REPLICATION"]["masterReplOffset"] = "0"
+
 	InfoSetMu.Unlock()
+}
+
+// GenerateRandomString 生成指定长度的伪随机字母数字字符串
+func GenerateRandomString(length int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(result)
 }
 
 func configGet(args []Value) Value {

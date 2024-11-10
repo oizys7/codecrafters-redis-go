@@ -224,8 +224,17 @@ func info(args []Value) Value {
 	cmd := args[0].bulk
 
 	if strings.ToUpper(cmd) == "REPLICATION" {
-		return Value{typ: BULK, bulk: "role:" + InfoSet["REPLICATION"]["role"] + "\n"}
+		return Value{typ: BULK, bulk: replicationStr()}
 	} else {
 		return Value{typ: ERROR, str: "not support at this time"}
 	}
+}
+
+func replicationStr() string {
+	var str string
+	str += "role: " + InfoSet["REPLICATION"]["role"] + "\n"
+	str += "master_replid: " + InfoSet["REPLICATION"]["masterReplId"] + "\n"
+	str += "master_repl_offset: " + InfoSet["REPLICATION"]["masterReplOffset"] + "\n"
+
+	return str
 }
