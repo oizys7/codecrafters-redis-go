@@ -18,6 +18,7 @@ var Handlers = map[string]func([]Value) Value{
 	"HGET":    hGet,
 	"HGETALL": hGetAll,
 	"KEYS":    keys,
+	"INFO":    info,
 }
 
 type Entry struct {
@@ -217,4 +218,14 @@ func keys(args []Value) Value {
 
 	// 先支持SETs
 	return Value{typ: ARRAY, array: value}
+}
+
+func info(args []Value) Value {
+	cmd := args[0].bulk
+
+	if strings.ToUpper(cmd) == "REPLICATION" {
+		return Value{typ: BULK, bulk: "role:master\nconnected_slaves:0\n"}
+	} else {
+		return Value{typ: ERROR, str: "not support at this time"}
+	}
 }
