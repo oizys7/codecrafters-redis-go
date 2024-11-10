@@ -11,7 +11,7 @@ import (
 var port = flag.String("port", "6379", "port to listen on")
 var dir = flag.String("dir", ".", "Directory to store RDB file")
 var dbFileName = flag.String("dbfilename", "dump.rdb", "RDB file name")
-var replicaof = flag.String("replicaof", "master", "replicaof host:port")
+var replicaof = flag.String("replicaof", "", "replicaof host:port")
 
 // var logLevelStr = flag.String("loglevel", "INFO", "log print level")
 var logLevel = flag.Int64("loglevel", 1, "log print level: 0 debug 1 info 2 warning 3 error 4 fatal 5 off")
