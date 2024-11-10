@@ -9,3 +9,7 @@
 module github.com/codecrafters-io/redis-starter-go
 
 go 1.22
+
+require github.com/hdt3213/rdb v1.0.13
+
+require github.com/tommy351/rdb-go v0.6.1 // indirect
