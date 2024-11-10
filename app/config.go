@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/codecrafters-io/redis-starter-go/logging"
 	"math/rand"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,6 +45,7 @@ func initConfigs() {
 		InfoSet["REPLICATION"] = map[string]string{"role": "master"}
 	} else {
 		InfoSet["REPLICATION"] = map[string]string{"role": "slave"}
+		masterAndSlaveReplication()
 	}
 
 	// 初始化随机数生成器
@@ -63,6 +66,21 @@ func GenerateRandomString(length int) string {
 		result[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(result)
+}
+
+func masterAndSlaveReplication() {
+	split := strings.Split(*replicaof, " ")
+	address := fmt.Sprintf("%s:%s", split[0], split[1])
+	// 给主机发送一个 PING 命令
+	master, err := net.Dial("tcp", address)
+	if err != nil {
+		logger.Error("error: ", err.Error())
+	}
+	writer := NewWriter(master)
+	err = writer.Write(Value{typ: STRING, str: "PING"})
+	if err != nil {
+		logger.Error("error:handshake with master:", err.Error())
+	}
 }
 
 func configGet(args []Value) Value {
